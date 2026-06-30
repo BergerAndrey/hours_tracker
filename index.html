@@ -558,10 +558,15 @@
         function getMonthTotalHours(yearMonth) {
             const shifts = JSON.parse(localStorage.getItem('shifts') || '{}');
             let total = 0;
+            
+            // Sum hours from ALL days in the month (not just current week)
             Object.keys(shifts).forEach(date => {
                 if (date.startsWith(yearMonth)) {
                     const d = shifts[date];
-                    if (d.start && d.end) total += parseFloat(calculateHours(d.start, d.end));
+                    if (d.start && d.end) {
+                        const hours = parseFloat(calculateHours(d.start, d.end));
+                        total += hours;
+                    }
                 }
             });
             return total;
@@ -776,12 +781,24 @@
             list.innerHTML = '';
             
             const today = new Date();
+            const months = [];
+            
+            // Generate last 12 months
             for (let i = 0; i < 12; i++) {
                 const d = new Date(today.getFullYear(), today.getMonth() - i);
                 const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                
+                months.push(ym);
+            }
+            
+            // Add current month if it's not in the list (in case of future months)
+            if (!months.includes(currentMonth)) {
+                months.unshift(currentMonth);
+            }
+            
+            months.forEach(ym => {
                 const item = document.createElement('div');
                 item.className = 'month-item';
+                item.dataset.month = ym;
                 
                 const nameSpan = document.createElement('span');
                 nameSpan.textContent = getMonthName(ym);
@@ -796,6 +813,7 @@
                         <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                     </svg>
                 `;
+                
                 deleteBtn.onclick = (e) => {
                     e.stopImmediatePropagation();
                     if (confirm(`Delete all data for ${getMonthName(ym)}?`)) {
@@ -805,11 +823,18 @@
                         });
                         saveShiftsData(data);
                         
-                        // Refresh the month list
-                        modal.classList.remove('active');
-                        setTimeout(() => {
-                            showMonthModal();
-                        }, 150);
+                        // Remove item from list without closing modal
+                        item.remove();
+                        
+                        // If we deleted the current month, switch to previous
+                        if (ym === currentMonth) {
+                            const newMonth = getNextMonth(ym); // This actually gets previous, but we'll use a better approach
+                            // Better: switch to the first available month
+                            const remainingMonths = Array.from(list.children).map(el => el.dataset.month);
+                            if (remainingMonths.length > 0) {
+                                changeMonth(remainingMonths[0]);
+                            }
+                        }
                         
                         renderCurrentWeek();
                     }
@@ -824,13 +849,18 @@
                 };
                 
                 list.appendChild(item);
-            }
+            });
             
-            // Автоматическое добавление следующего месяца
+            // Add next month button
             document.getElementById('add-month-btn').onclick = () => {
-                modal.classList.remove('active');
                 const nextMonth = getNextMonth(currentMonth);
+                modal.classList.remove('active');
                 changeMonth(nextMonth);
+                
+                // Reopen modal with updated list after a short delay
+                setTimeout(() => {
+                    showMonthModal();
+                }, 300);
             };
             
             modal.classList.add('active');
@@ -897,5 +927,5 @@
             });
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1404ea75dd90213',t:'MTc4Mjg1NTM5NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
