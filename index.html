@@ -804,7 +804,13 @@
                             if (key.startsWith(ym)) delete data[key];
                         });
                         saveShiftsData(data);
+                        
+                        // Refresh the month list
                         modal.classList.remove('active');
+                        setTimeout(() => {
+                            showMonthModal();
+                        }, 150);
+                        
                         renderCurrentWeek();
                     }
                 };
@@ -878,14 +884,18 @@
 
         init();
 
-        // ==================== PWA: Регистрация Service Worker ====================
+        // ==================== PWA: Service Worker Registration (GitHub Pages compatible) ====================
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('%c[SW] Service Worker зарегистрирован', 'color:#30d158'))
-                    .catch(err => console.log('%c[SW] Ошибка регистрации:', 'color:#ff453a', err));
+                    .then(registration => {
+                        console.log('%c[SW] Service Worker registered successfully', 'color:#30d158');
+                    })
+                    .catch(error => {
+                        console.log('%c[SW] Service Worker registration failed:', 'color:#ff453a', error);
+                    });
             });
         }
     </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1404ea75dd90213',t:'MTc4Mjg1NTM5NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
