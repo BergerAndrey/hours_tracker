@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
+    <link rel="manifest" href="manifest.json">
+    <title>Hours • Work</title>
+    <style>
+        :root {
+            --bg: #000000;
+            --card-bg: #1c1c1e;
+            --text: #ffffff;
+            --accent: #007aff;
+            --secondary: #8e8e93;
+            --border: #2c2c2e;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+
+        .app-header {
+            padding: 20px 0 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .app-title {
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -0.4px;
+        }
+
+        .month-selector {
+            font-size: 19px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 9px 16px;
+            background: var(--card-bg);
+            border-radius: 14px;
+        }
+
+        .month-selector:active {
+            opacity: 0.7;
+        }
+
+        .week-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 14px 0 20px;
+            background: var(--card-bg);
+            border-radius: 14px;
+            padding: 8px 10px;
+        }
+
+        .week-nav button {
+            background: none;
+            border: none;
+            color: var(--accent);
+            font-size: 28px;
+            width: 46px;
+            height: 46px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .week-nav button:active {
+            background: rgba(0, 122, 255, 0.12);
+        }
+
+        .week-nav button:disabled {
+            opacity: 0.3;
+        }
+
+        .week-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .shifts-table {
+            background: var(--card-bg);
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .shifts-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .shifts-table th {
+            background: #2c2c2e;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--secondary);
+            padding: 13px 8px;
+            text-align: left;
+        }
+
+        .shifts-table td {
+            padding: 15px 8px;
+            border-top: 1px solid var(--border);
+            font-size: 16px;
+        }
+
+        .day-cell {
+            font-weight: 600;
+            width: 55px;
+        }
+
+        .time-cell {
+            font-variant-numeric: tabular-nums;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .set-button {
+            background: #2c2c2e;
+            color: var(--accent);
+            border: none;
+            padding: 6px 14px;
+            border-radius: 9px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            min-width: 56px;
+        }
+
+        .set-button:active {
+            opacity: 0.7;
+        }
+
+        .month-total {
+            background: var(--card-bg);
+            border-radius: 18px;
+            padding: 20px;
+            margin-top: 22px;
+        }
+
+        .month-total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .month-total-row:last-child {
+            margin-bottom: 0;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .month-total-label {
+            color: var(--secondary);
+            font-size: 15px;
+        }
+
+        .month-total-value {
+            font-weight: 600;
+            font-size: 17px;
+        }
+
+        .clear-btn {
+            background: #2c2c2e;
+            color: #ff453a;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .clear-btn:active {
+            opacity: 0.7;
+        }
+
+        /* Модальное окно */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            display: none;
+            align-items: flex-end;
+            z-index: 200;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+            border-radius: 22px 22px 0 0;
+            padding: 22px 18px 32px;
+        }
+
+        .modal-header {
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 18px;
+        }
+
+        .time-picker {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 18px 0 26px;
+        }
+
+        .wheel {
+            width: 92px;
+            height: 190px;
+            overflow: hidden;
+            position: relative;
+            background: #2c2c2e;
+            border-radius: 14px;
+        }
+
+        .wheel-label {
+            position: absolute;
+            top: -22px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 12px;
+            color: var(--secondary);
+            font-weight: 500;
+        }
+
+        .wheel-inner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .wheel-item {
+            height: 47px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 500;
+            scroll-snap-align: center;
+            color: var(--secondary);
+        }
+
+        .wheel-item.selected {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .wheel::before,
+        .wheel::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 47px;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .wheel::before {
+            top: 0;
+            background: linear-gradient(to bottom, #2c2c2e, transparent);
+        }
+
+        .wheel::after {
+            bottom: 0;
+            background: linear-gradient(to top, #2c2c2e, transparent);
+        }
+
+        .modal-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 11px;
+        }
+
+        .modal-btn {
+            height: 52px;
+            border: none;
+            border-radius: 14px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .modal-btn.primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .modal-btn.cancel {
+            background: #2c2c2e;
+            color: var(--accent);
+        }
+
+        .month-list {
+            max-height: 310px;
+            overflow-y: auto;
+        }
+
+        .month-item {
+            padding: 17px 18px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            font-size: 17px;
+        }
+
+        .month-item:active {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .month-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .delete-month-btn {
+            background: #ff453a;
+            color: white;
+            border: none;
+            padding: 6px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+        }
+
+        .delete-month-btn:active {
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Заголовок -->
+        <div class="app-header">
+            <div class="app-title">Hours • Work</div>
+            <button class="clear-btn" id="clear-btn">Clear</button>
+        </div>
+
+        <!-- Выбор месяца -->
+        <div class="month-selector" id="month-selector">
+            <span id="current-month">Июль 2025</span>
+            <span style="font-size: 17px;">▼</span>
+        </div>
+
+        <!-- Навигация по неделям -->
+        <div class="week-nav">
+            <button id="prev-week">‹</button>
+            <div class="week-title" id="week-title">1 – 7 июля</div>
+            <button id="next-week">›</button>
+        </div>
+
+        <!-- Таблица смен -->
+        <div class="shifts-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 55px;">Day</th>
+                        <th>Start</th>
+                        <th>End</th>
+                        <th style="width: 72px;">Time</th>
+                    </tr>
+                </thead>
+                <tbody id="shifts-tbody"></tbody>
+            </table>
+        </div>
+
+        <!-- Итоги за месяц -->
+        <div id="month-total" class="month-total" style="display: none;">
+            <div class="month-total-row">
+                <div class="month-total-label">Total Time</div>
+                <div class="month-total-value" id="total-time">0h 0m</div>
+            </div>
+            <div class="month-total-row">
+                <div class="month-total-label">Total Salary</div>
+                <div class="month-total-value" id="total-salary">0.00 zł</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка выбора времени -->
+    <div id="time-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header" id="modal-title">Start Time</div>
+            
+            <div class="time-picker">
+                <!-- Часы -->
+                <div style="position: relative;">
+                    <div class="wheel-label">hours</div>
+                    <div class="wheel" id="hour-wheel">
+                        <div class="wheel-inner" id="hour-list"></div>
+                    </div>
+                </div>
+                
+                <!-- Минуты -->
+                <div style="position: relative;">
+                    <div class="wheel-label">minutes</div>
+                    <div class="wheel" id="minute-wheel">
+                        <div class="wheel-inner" id="minute-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="modal-btn primary" id="modal-set">Set</button>
+                <button class="modal-btn cancel" id="modal-cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка выбора месяца -->
+    <div id="month-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Select Month</div>
+            <div class="month-list" id="month-list"></div>
+            <div style="margin-top: 18px;">
+                <button class="modal-btn primary" id="add-month-btn" style="width: 100%;">+ Add next month</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
+        let currentMonth = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0');
+        let currentWeekIndex = 0;
+        let currentEditingDay = null;
+
+        const salaryRates = [
+            { maxHours: 160, rate: 28.94 },
+            { maxHours: 180, rate: 28.45 },
+            { maxHours: 200, rate: 28.06 },
+            { maxHours: 220, rate: 27.75 },
+            { maxHours: 240, rate: 27.48 },
+            { maxHours: 260, rate: 27.25 },
+            { maxHours: 280, rate: 27.06 }
+        ];
+
+        // ==================== УТИЛИТЫ ====================
+        function getMonthName(yearMonth) {
+            const [year, month] = yearMonth.split('-');
+            const date = new Date(year, month - 1);
+            return date.toLocaleString('en', { month: 'long', year: 'numeric' });
+        }
+
+        function getNextMonth(yearMonth) {
+            const [year, month] = yearMonth.split('-').map(Number);
+            let nextMonth = month + 1;
+            let nextYear = year;
+            if (nextMonth > 12) {
+                nextMonth = 1;
+                nextYear++;
+            }
+            return `${nextYear}-${String(nextMonth).padStart(2, '0')}`;
+        }
+
+        // Улучшенная функция недель (учитывает день окончания месяца)
+        function getWeeksInMonth(yearMonth) {
+            const [year, month] = yearMonth.split('-').map(Number);
+            const firstDay = new Date(year, month - 1, 1);
+            const lastDay = new Date(year, month, 0);
+            
+            const weeks = [];
+            let current = new Date(firstDay);
+            
+            // Определяем день недели последнего дня месяца
+            const lastDayOfWeek = lastDay.getDay();
+            
+            while (current <= lastDay) {
+                const weekStart = new Date(current);
+                let weekEnd = new Date(current);
+                weekEnd.setDate(weekEnd.getDate() + 6);
+                
+                // Если это последняя неделя — заканчиваем на дне недели последнего дня месяца
+                if (weekEnd > lastDay) {
+                    weekEnd = new Date(lastDay);
+                }
+                
+                weeks.push({
+                    start: weekStart,
+                    end: weekEnd,
+                    label: `${weekStart.getDate()} – ${weekEnd.getDate()} ${weekStart.toLocaleString('en', {month: 'long'})}`
+                });
+                
+                current.setDate(current.getDate() + 7);
+            }
+            return weeks;
+        }
+
+        function formatTimeHHMM(h, m) {
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+
+        function parseTime(str) {
+            if (!str) return null;
+            const [h, m] = str.split(':').map(Number);
+            return { hours: h, minutes: m };
+        }
+
+        function calculateHours(startStr, endStr) {
+            if (!startStr || !endStr) return 0;
+            const start = parseTime(startStr);
+            const end = parseTime(endStr);
+            let mins = (end.hours * 60 + end.minutes) - (start.hours * 60 + start.minutes);
+            if (mins < 0) mins += 1440;
+            return (mins / 60).toFixed(2);
+        }
+
+        function getMonthTotalHours(yearMonth) {
+            const shifts = JSON.parse(localStorage.getItem('shifts') || '{}');
+            let total = 0;
+            Object.keys(shifts).forEach(date => {
+                if (date.startsWith(yearMonth)) {
+                    const d = shifts[date];
+                    if (d.start && d.end) total += parseFloat(calculateHours(d.start, d.end));
+                }
+            });
+            return total;
+        }
+
+        function getSalaryForHours(hours) {
+            let rate = 27.06;
+            for (let r of salaryRates) {
+                if (hours <= r.maxHours) { rate = r.rate; break; }
+            }
+            return (hours * rate).toFixed(2);
+        }
+
+        // ==================== РАБОТА С ДАННЫМИ ====================
+        function getShiftsData() {
+            return JSON.parse(localStorage.getItem('shifts') || '{}');
+        }
+
+        function saveShiftsData(data) {
+            localStorage.setItem('shifts', JSON.stringify(data));
+        }
+
+        function getDayData(dateStr) {
+            return getShiftsData()[dateStr] || { start: null, end: null };
+        }
+
+        function setDayData(dateStr, field, value) {
+            const data = getShiftsData();
+            if (!data[dateStr]) data[dateStr] = {};
+            data[dateStr][field] = value;
+            saveShiftsData(data);
+        }
+
+        function clearWeek(week) {
+            if (!confirm('Clear all data for this week?')) return;
+            
+            const data = getShiftsData();
+            let current = new Date(week.start);
+            const end = new Date(week.end);
+            
+            while (current <= end) {
+                const dateStr = current.toISOString().split('T')[0];
+                if (data[dateStr]) delete data[dateStr];
+                current.setDate(current.getDate() + 1);
+            }
+            saveShiftsData(data);
+            renderCurrentWeek();
+        }
+
+        function clearMonth() {
+            if (!confirm('Clear ALL data for this month?')) return;
+            const data = getShiftsData();
+            Object.keys(data).forEach(key => {
+                if (key.startsWith(currentMonth)) delete data[key];
+            });
+            saveShiftsData(data);
+            renderCurrentWeek();
+        }
+
+        // ==================== УЛУЧШЕННЫЙ WHEEL PICKER ====================
+        function createWheel(containerId, max, initial) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            for (let i = 0; i <= max; i++) {
+                const item = document.createElement('div');
+                item.className = 'wheel-item';
+                item.textContent = String(i).padStart(2, '0');
+                item.dataset.value = i;
+                if (i === initial) item.classList.add('selected');
+                container.appendChild(item);
+            }
+            
+            setTimeout(() => {
+                const sel = container.querySelector('.selected');
+                if (sel) sel.scrollIntoView({ block: 'center', behavior: 'auto' });
+            }, 40);
+            
+            // Улучшенная обработка скролла
+            container.onscroll = () => {
+                const items = container.querySelectorAll('.wheel-item');
+                let closest = null, minDist = Infinity;
+                items.forEach(item => {
+                    const rect = item.getBoundingClientRect();
+                    const cRect = container.getBoundingClientRect();
+                    const dist = Math.abs(rect.top + rect.height/2 - cRect.top - cRect.height/2);
+                    if (dist < minDist) { minDist = dist; closest = item; }
+                });
+                items.forEach(i => i.classList.remove('selected'));
+                if (closest) closest.classList.add('selected');
+            };
+            
+            // Добавляем haptic feedback при выборе (если поддерживается)
+            container.addEventListener('scrollend', () => {
+                if (navigator.vibrate) navigator.vibrate(10);
+            });
+        }
+
+        function getWheelValue(containerId) {
+            const sel = document.getElementById(containerId).querySelector('.selected');
+            return sel ? parseInt(sel.dataset.value) : 0;
+        }
+
+        function showTimePicker(dateStr, field) {
+            currentEditingDay = { date: dateStr, field };
+            
+            const modal = document.getElementById('time-modal');
+            document.getElementById('modal-title').textContent = field === 'start' ? 'Start Time' : 'End Time';
+            
+            const dayData = getDayData(dateStr);
+            const current = field === 'start' ? dayData.start : dayData.end;
+            
+            let h = 8, m = 0;
+            if (current) {
+                const p = parseTime(current);
+                h = p.hours; m = p.minutes;
+            }
+            
+            createWheel('hour-list', 23, h);
+            createWheel('minute-list', 59, m);
+            
+            modal.classList.add('active');
+            
+            document.getElementById('modal-set').onclick = () => {
+                const hour = getWheelValue('hour-list');
+                const minute = getWheelValue('minute-list');
+                setDayData(dateStr, field, formatTimeHHMM(hour, minute));
+                modal.classList.remove('active');
+                renderCurrentWeek();
+            };
+            
+            document.getElementById('modal-cancel').onclick = () => {
+                modal.classList.remove('active');
+            };
+        }
+
+        // ==================== ОТРИСОВКА ====================
+        function renderCurrentWeek() {
+            const tbody = document.getElementById('shifts-tbody');
+            tbody.innerHTML = '';
+            
+            const weeks = getWeeksInMonth(currentMonth);
+            const week = weeks[currentWeekIndex];
+            if (!week) return;
+            
+            let current = new Date(week.start);
+            const end = new Date(week.end);
+            
+            while (current <= end) {
+                const dateStr = current.toISOString().split('T')[0];
+                const dayName = current.toLocaleString('en', { weekday: 'short' });
+                const dayData = getDayData(dateStr);
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="day-cell">${dayName}</td>
+                    <td>
+                        <button class="set-button" data-date="${dateStr}" data-field="start">
+                            ${dayData.start || 'Set'}
+                        </button>
+                    </td>
+                    <td>
+                        <button class="set-button" data-date="${dateStr}" data-field="end">
+                            ${dayData.end || 'Set'}
+                        </button>
+                    </td>
+                    <td class="time-cell">
+                        ${dayData.start && dayData.end ? calculateHours(dayData.start, dayData.end) + 'h' : '—'}
+                    </td>
+                `;
+                tbody.appendChild(row);
+                current.setDate(current.getDate() + 1);
+            }
+            
+            tbody.querySelectorAll('.set-button').forEach(btn => {
+                btn.onclick = () => showTimePicker(btn.dataset.date, btn.dataset.field);
+            });
+            
+            // Итоги
+            const totalBlock = document.getElementById('month-total');
+            if (currentWeekIndex === weeks.length - 1) {
+                totalBlock.style.display = 'block';
+                const totalHours = getMonthTotalHours(currentMonth);
+                document.getElementById('total-time').textContent = 
+                    `${Math.floor(totalHours)}h ${Math.round((totalHours % 1) * 60)}m`;
+                document.getElementById('total-salary').textContent = 
+                    `${getSalaryForHours(totalHours)} zł`;
+            } else {
+                totalBlock.style.display = 'none';
+            }
+        }
+
+        function updateWeekNav() {
+            const weeks = getWeeksInMonth(currentMonth);
+            document.getElementById('week-title').textContent = weeks[currentWeekIndex]?.label || '';
+            document.getElementById('prev-week').disabled = currentWeekIndex === 0;
+            document.getElementById('next-week').disabled = currentWeekIndex === weeks.length - 1;
+        }
+
+        function changeMonth(newMonth) {
+            currentMonth = newMonth;
+            currentWeekIndex = 0;
+            document.getElementById('current-month').textContent = getMonthName(currentMonth);
+            renderCurrentWeek();
+            updateWeekNav();
+        }
+
+        // ==================== МОДАЛКИ ====================
+        function showMonthModal() {
+            const modal = document.getElementById('month-modal');
+            const list = document.getElementById('month-list');
+            list.innerHTML = '';
+            
+            const today = new Date();
+            for (let i = 0; i < 12; i++) {
+                const d = new Date(today.getFullYear(), today.getMonth() - i);
+                const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                
+                const item = document.createElement('div');
+                item.className = 'month-item';
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = getMonthName(ym);
+                nameSpan.style.flex = '1';
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-month-btn';
+                deleteBtn.innerHTML = `
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 6h18"></path>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+                        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                `;
+                deleteBtn.onclick = (e) => {
+                    e.stopImmediatePropagation();
+                    if (confirm(`Delete all data for ${getMonthName(ym)}?`)) {
+                        const data = getShiftsData();
+                        Object.keys(data).forEach(key => {
+                            if (key.startsWith(ym)) delete data[key];
+                        });
+                        saveShiftsData(data);
+                        modal.classList.remove('active');
+                        renderCurrentWeek();
+                    }
+                };
+                
+                item.appendChild(nameSpan);
+                item.appendChild(deleteBtn);
+                
+                item.onclick = () => {
+                    modal.classList.remove('active');
+                    changeMonth(ym);
+                };
+                
+                list.appendChild(item);
+            }
+            
+            // Автоматическое добавление следующего месяца
+            document.getElementById('add-month-btn').onclick = () => {
+                modal.classList.remove('active');
+                const nextMonth = getNextMonth(currentMonth);
+                changeMonth(nextMonth);
+            };
+            
+            modal.classList.add('active');
+        }
+
+        // ==================== ИНИЦИАЛИЗАЦИЯ ====================
+        function init() {
+            document.getElementById('current-month').textContent = getMonthName(currentMonth);
+            
+            // Навигация по неделям
+            document.getElementById('prev-week').onclick = () => {
+                if (currentWeekIndex > 0) {
+                    currentWeekIndex--;
+                    renderCurrentWeek();
+                    updateWeekNav();
+                }
+            };
+            
+            document.getElementById('next-week').onclick = () => {
+                const weeks = getWeeksInMonth(currentMonth);
+                if (currentWeekIndex < weeks.length - 1) {
+                    currentWeekIndex++;
+                    renderCurrentWeek();
+                    updateWeekNav();
+                }
+            };
+            
+            // Выбор месяца
+            document.getElementById('month-selector').onclick = showMonthModal;
+            
+            // Кнопка Clear
+            document.getElementById('clear-btn').onclick = () => {
+                const weeks = getWeeksInMonth(currentMonth);
+                const week = weeks[currentWeekIndex];
+                
+                if (confirm('Очистить текущую неделю или весь месяц?')) {
+                    if (confirm('Очистить только текущую неделю?')) {
+                        clearWeek(week);
+                    } else {
+                        clearMonth();
+                    }
+                }
+            };
+            
+            // Первая отрисовка
+            renderCurrentWeek();
+            updateWeekNav();
+            
+            console.log('%c[Dev] App loaded (single page + Clear + PWA ready).', 'color:#8e8e93');
+        }
+
+        init();
+
+        // ==================== PWA: Регистрация Service Worker ====================
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('%c[SW] Service Worker зарегистрирован', 'color:#30d158'))
+                    .catch(err => console.log('%c[SW] Ошибка регистрации:', 'color:#ff453a', err));
+            });
+        }
+    </script>
+</body>
+</html>
