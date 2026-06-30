@@ -377,6 +377,27 @@
         .delete-month-btn:active {
             opacity: 0.7;
         }
+
+        /* Close button */
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: var(--secondary);
+            font-size: 24px;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:active {
+            opacity: 0.6;
+        }
     </style>
 </head>
 <body>
@@ -431,6 +452,7 @@
     <!-- Модалка выбора времени -->
     <div id="time-modal" class="modal">
         <div class="modal-content">
+            <button class="modal-close" id="time-modal-close">×</button>
             <div class="modal-header" id="modal-title">Start Time</div>
             
             <div class="time-picker">
@@ -461,6 +483,7 @@
     <!-- Модалка выбора месяца -->
     <div id="month-modal" class="modal">
         <div class="modal-content">
+            <button class="modal-close" id="month-modal-close">×</button>
             <div class="modal-header">Select Month</div>
             <div class="month-list" id="month-list"></div>
             <div style="margin-top: 18px;">
@@ -587,6 +610,30 @@
 
         function saveShiftsData(data) {
             localStorage.setItem('shifts', JSON.stringify(data));
+        }
+
+        // ==================== АКТИВНЫЕ МЕСЯЦЫ (для сохранения добавления/удаления) ====================
+        function getActiveMonths() {
+            return JSON.parse(localStorage.getItem('activeMonths') || '[]');
+        }
+
+        function saveActiveMonths(months) {
+            localStorage.setItem('activeMonths', JSON.stringify(months));
+        }
+
+        function addActiveMonth(ym) {
+            let months = getActiveMonths();
+            if (!months.includes(ym)) {
+                months.push(ym);
+                months.sort((a, b) => b.localeCompare(a)); // newest first
+                saveActiveMonths(months);
+            }
+        }
+
+        function removeActiveMonth(ym) {
+            let months = getActiveMonths();
+            months = months.filter(m => m !== ym);
+            saveActiveMonths(months);
         }
 
         function getDayData(dateStr) {
@@ -769,6 +816,10 @@
         function changeMonth(newMonth) {
             currentMonth = newMonth;
             currentWeekIndex = 0;
+            
+            // Add to active months list
+            addActiveMonth(newMonth);
+            
             document.getElementById('current-month').textContent = getMonthName(currentMonth);
             renderCurrentWeek();
             updateWeekNav();
@@ -780,19 +831,18 @@
             const list = document.getElementById('month-list');
             list.innerHTML = '';
             
-            const today = new Date();
-            const months = [];
+            let months = getActiveMonths();
             
-            // Generate last 12 months
-            for (let i = 0; i < 12; i++) {
-                const d = new Date(today.getFullYear(), today.getMonth() - i);
-                const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                months.push(ym);
+            // If no active months yet, initialize with current month
+            if (months.length === 0) {
+                addActiveMonth(currentMonth);
+                months = getActiveMonths();
             }
             
-            // Add current month if it's not in the list (in case of future months)
+            // Ensure current month is always in the list
             if (!months.includes(currentMonth)) {
-                months.unshift(currentMonth);
+                addActiveMonth(currentMonth);
+                months = getActiveMonths();
             }
             
             months.forEach(ym => {
@@ -816,28 +866,29 @@
                 
                 deleteBtn.onclick = (e) => {
                     e.stopImmediatePropagation();
-                    if (confirm(`Delete all data for ${getMonthName(ym)}?`)) {
-                        const data = getShiftsData();
-                        Object.keys(data).forEach(key => {
-                            if (key.startsWith(ym)) delete data[key];
-                        });
-                        saveShiftsData(data);
-                        
-                        // Remove item from list without closing modal
-                        item.remove();
-                        
-                        // If we deleted the current month, switch to previous
-                        if (ym === currentMonth) {
-                            const newMonth = getNextMonth(ym); // This actually gets previous, but we'll use a better approach
-                            // Better: switch to the first available month
-                            const remainingMonths = Array.from(list.children).map(el => el.dataset.month);
-                            if (remainingMonths.length > 0) {
-                                changeMonth(remainingMonths[0]);
-                            }
+                    
+                    // Delete shift data immediately (no confirmation)
+                    const data = getShiftsData();
+                    Object.keys(data).forEach(key => {
+                        if (key.startsWith(ym)) delete data[key];
+                    });
+                    saveShiftsData(data);
+                    
+                    // Remove from active months
+                    removeActiveMonth(ym);
+                    
+                    // Remove from DOM
+                    item.remove();
+                    
+                    // If current month was deleted, switch to another
+                    if (ym === currentMonth) {
+                        const remaining = getActiveMonths();
+                        if (remaining.length > 0) {
+                            changeMonth(remaining[0]);
                         }
-                        
-                        renderCurrentWeek();
                     }
+                    
+                    renderCurrentWeek();
                 };
                 
                 item.appendChild(nameSpan);
@@ -854,16 +905,49 @@
             // Add next month button
             document.getElementById('add-month-btn').onclick = () => {
                 const nextMonth = getNextMonth(currentMonth);
+                addActiveMonth(nextMonth);           // ← Save the new month
                 modal.classList.remove('active');
                 changeMonth(nextMonth);
                 
-                // Reopen modal with updated list after a short delay
+                // Reopen modal with updated list
                 setTimeout(() => {
                     showMonthModal();
-                }, 300);
+                }, 200);
             };
             
             modal.classList.add('active');
+        }
+
+        // ==================== CLOSE MODALS ====================
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.remove('active');
+        }
+
+        function setupModalCloseHandlers() {
+            // Time modal
+            const timeModal = document.getElementById('time-modal');
+            const timeCloseBtn = document.getElementById('time-modal-close');
+            
+            timeCloseBtn.onclick = () => closeModal('time-modal');
+            
+            timeModal.onclick = (e) => {
+                if (e.target === timeModal) {
+                    closeModal('time-modal');
+                }
+            };
+
+            // Month modal
+            const monthModal = document.getElementById('month-modal');
+            const monthCloseBtn = document.getElementById('month-modal-close');
+            
+            monthCloseBtn.onclick = () => closeModal('month-modal');
+            
+            monthModal.onclick = (e) => {
+                if (e.target === monthModal) {
+                    closeModal('month-modal');
+                }
+            };
         }
 
         // ==================== ИНИЦИАЛИЗАЦИЯ ====================
@@ -909,6 +993,9 @@
             renderCurrentWeek();
             updateWeekNav();
             
+            // Setup modal close handlers (X button + click outside)
+            setupModalCloseHandlers();
+            
             console.log('%c[Dev] App loaded (single page + Clear + PWA ready).', 'color:#8e8e93');
         }
 
@@ -927,5 +1014,5 @@
             });
         }
     </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1407eee9ecfee4b',t:'MTc4Mjg1NzM3MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
